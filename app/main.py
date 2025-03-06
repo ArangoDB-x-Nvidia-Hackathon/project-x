@@ -1,11 +1,11 @@
 from fastapi import FastAPI
-from app.routes import query, influence
 
-app = FastAPI(title="Project-X")
-
-app.include_router(query.router, prefix="/query", tags=["Query"])
-app.include_router(influence.router, prefix="/influence", tags=["Influence"])
+app = FastAPI()
 
 @app.get("/")
-def home():
-    return {"message": "Welcome to Project-X API"}
+def read_root():
+    return {"message": "FastAPI is running!"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000)
