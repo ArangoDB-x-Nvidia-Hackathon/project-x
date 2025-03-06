@@ -1,6 +1,9 @@
 from fastapi import FastAPI
+from app.routes import query
 
 app = FastAPI()
+
+# app.include_router(query.router, prefix="/query", tags=["Query"])
 
 @app.get("/")
 def read_root():
