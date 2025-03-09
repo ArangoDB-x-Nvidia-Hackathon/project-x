@@ -2,22 +2,22 @@ from arango import ArangoClient
 from datetime import datetime
 from typing import List, Dict, Any
 
-from config import ARANGO_HOST, ARANGO_USER, ARANGO_PASSWORD
+from config import ARANGO_HOST, ARANGO_USER, ARANGO_PASSWORD, ARANGO_DB
 from services.sentiment import categorize_sentiment, filter_by_sentiment
 
 # Initialize ArangoDB client
 client = ArangoClient(hosts=ARANGO_HOST)
-db = client.db(username=ARANGO_USER, password=ARANGO_PASSWORD , verify=True )
+db = client.db(ARANGO_DB, username=ARANGO_USER, password=ARANGO_PASSWORD, verify=True)
 
 def build_aql_query(processed_query: Dict[str, Any]) -> str:
     """
     Build an AQL query based on the processed user query to retrieve
-    relevant GDELT events from ArangoDB.
+    relevant events from ArangoDB using the provided collection structure.
     """
     # Base query
     aql = """
-    FOR event IN gdelt_events
-        LET event_date = DATE_TIMESTAMP(event.Day)
+    FOR event IN Event
+        LET event_date = DATE_TIMESTAMP(event.date)
     """
     
     # Add filters
@@ -38,7 +38,7 @@ def build_aql_query(processed_query: Dict[str, Any]) -> str:
         topic_filters = []
         for term in topic_terms:
             if term not in ["the", "and", "or", "in", "on", "at", "of", "to", "from", "with", "by"]:
-                topic_filters.append(f"LOWER(event.EventDescriptions) LIKE '%{term}%'")
+                topic_filters.append(f"LOWER(event.description) LIKE '%{term}%'")
         
         if topic_filters:
             filters.append(f"({' OR '.join(topic_filters)})")
@@ -47,7 +47,13 @@ def build_aql_query(processed_query: Dict[str, Any]) -> str:
     if processed_query["actors"]:
         actor_filters = []
         for actor in processed_query["actors"]:
-            actor_filters.append(f"LOWER(event.Actor1Name) LIKE '%{actor.lower()}%' OR LOWER(event.Actor2Name) LIKE '%{actor.lower()}%'")
+            actor_filters.append(f"""
+                actor IN (
+                    FOR v, e IN 1..1 OUTBOUND event eventActor
+                    FILTER LOWER(v.name) LIKE '%{actor.lower()}%'
+                    RETURN v
+                )
+            """)
         if actor_filters:
             filters.append(f"({' OR '.join(actor_filters)})")
     
@@ -56,9 +62,11 @@ def build_aql_query(processed_query: Dict[str, Any]) -> str:
         location_filters = []
         for location in processed_query["locations"]:
             location_filters.append(f"""
-                LOWER(event.Actor1Geo_Fullname) LIKE '%{location.lower()}%' OR 
-                LOWER(event.Actor2Geo_Fullname) LIKE '%{location.lower()}%' OR 
-                LOWER(event.ActionGeo_Fullname) LIKE '%{location.lower()}%'
+                location IN (
+                    FOR v, e IN 1..1 OUTBOUND event hasLocation
+                    FILTER LOWER(v.name) LIKE '%{location.lower()}%'
+                    RETURN v
+                )
             """)
         if location_filters:
             filters.append(f"({' OR '.join(location_filters)})")
@@ -69,21 +77,27 @@ def build_aql_query(processed_query: Dict[str, Any]) -> str:
     
     # Complete the query with sorting and limiting
     aql += """
-    SORT event.DATEADDED DESC
+    SORT event.date DESC
     LIMIT 1000
     RETURN {
-        event_id: event.GlobalEventID,
-        date: event.Day,
-        actors: [event.Actor1Name, event.Actor2Name],
-        action: event.EventCode,
-        tone: event.AvgTone,
-        mention_count: event.NumMentions,
-        location: {
-            lat: TO_NUMBER(event.ActionGeo_Lat),
-            lon: TO_NUMBER(event.ActionGeo_Long),
-            country: event.ActionGeo_CountryCode,
-            location_name: event.ActionGeo_Fullname
-        }
+        event_id: event._key,
+        date: event.date,
+        actors: (
+            FOR v, e IN 1..1 OUTBOUND event eventActor
+            RETURN v.name
+        ),
+        action: event.action,
+        tone: event.tone,
+        mention_count: event.mention_count,
+        location: (
+            FOR v, e IN 1..1 OUTBOUND event hasLocation
+            RETURN {
+                lat: v.lat,
+                lon: v.lon,
+                country: v.country,
+                location_name: v.name
+            }
+        )[0]
     }
     """
     
@@ -110,7 +124,8 @@ def query_graph_database(processed_query: Dict[str, Any]) -> List[Dict]:
         # Filter by sentiment if specified
         if processed_query["sentiment"] and processed_query["sentiment"].lower() != "all":
             events = filter_by_sentiment(events, processed_query["sentiment"])
-            
+        
+        print(f"Query returned {len(events)} events")
         return events
     
     except Exception as e:

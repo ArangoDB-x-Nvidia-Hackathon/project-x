@@ -7,6 +7,7 @@ load_dotenv()
 ARANGO_HOST = os.getenv("HOST")
 ARANGO_USER = os.getenv("USER")
 ARANGO_PASSWORD = os.getenv("PASSWORD", "")
+ARANGO_DB = os.getenv("DB")
 
 # Groq Configuration
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
