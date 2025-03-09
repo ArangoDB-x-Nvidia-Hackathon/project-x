@@ -9,7 +9,8 @@ from config import GROQ_API_KEY
 llm = ChatGroq(
     temperature=0,
     api_key=GROQ_API_KEY,
-    model_name="llama3-70b-8192"  # or another Groq model of your choice
+    model_name="llama-3.3-70b-versatile",
+    max_tokens=2048
 )
 
 def process_query(user_query: str) -> dict:
