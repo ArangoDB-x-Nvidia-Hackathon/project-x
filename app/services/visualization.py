@@ -1,78 +1,86 @@
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
+from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
+from functools import lru_cache
 import folium
 from folium.plugins import MarkerCluster
 from typing import List, Dict
+import logging
+
+# Initialize logger
+logger = logging.getLogger("visualization_service")
+
+# Configure geocoder with timeout and retries
+geolocator = Nominatim(
+    user_agent="gdelt_map_app",
+    timeout=10  # Increase timeout to 10 seconds
+)
+geocode = RateLimiter(
+    geolocator.geocode,
+    min_delay_seconds=1,
+    max_retries=2,
+    error_wait_seconds=5
+)
+
+@lru_cache(maxsize=1000)
+def cached_geocode(search_query: str) -> tuple:
+    """Cache geocoding results to reduce API calls."""
+    try:
+        location = geocode(search_query)
+        if location:
+            return (location.latitude, location.longitude)
+        return (None, None)
+    except (GeocoderTimedOut, GeocoderUnavailable) as e:
+        logger.warning(f"Geocoding failed for {search_query}: {str(e)}")
+        return (None, None)
+    except Exception as e:
+        logger.error(f"Unexpected geocoding error: {str(e)}")
+        return (None, None)
 
 def create_map(events: List[Dict]) -> str:
-    """
-    Create a Folium map with the event data and return the HTML.
-    """
-    # Create a base map centered at an average of event locations
-    if not events:
-        # Default center if no events
-        m = folium.Map(location=[0, 0], zoom_start=2)
-    else:
-        # Calculate average position
-        valid_events = [e for e in events if e["location"]["lat"] and e["location"]["lon"]]
-        if valid_events:
-            avg_lat = sum(e["location"]["lat"] for e in valid_events) / len(valid_events)
-            avg_lon = sum(e["location"]["lon"] for e in valid_events) / len(valid_events)
-            m = folium.Map(location=[avg_lat, avg_lon], zoom_start=3)
-        else:
-            m = folium.Map(location=[0, 0], zoom_start=2)
+    """Create a Folium map with event markers using location names."""
+    m = folium.Map(location=[20, 0], zoom_start=2)
+    marker_cluster = MarkerCluster().add_to(m)
     
-    # Create marker clusters for different sentiments
-    positive_cluster = MarkerCluster(name="Positive Events")
-    neutral_cluster = MarkerCluster(name="Neutral Events")
-    negative_cluster = MarkerCluster(name="Negative Events")
-    
-    # Add markers for each event
     for event in events:
-        lat = event["location"]["lat"]
-        lon = event["location"]["lon"]
-        
-        if not lat or not lon:
+        if not event.get("locations"):
             continue
             
-        # Create popup content
-        popup_content = f"""
-        <div style="width: 300px;">
-            <h4>Event ID: {event["event_id"]}</h4>
-            <p><b>Date:</b> {event["date"]}</p>
-            <p><b>Actors:</b> {", ".join(filter(None, event["actors"]))}</p>
-            <p><b>Action Code:</b> {event["action"]}</p>
-            <p><b>Location:</b> {event["location"]["location_name"]}</p>
-            <p><b>Sentiment:</b> {event["sentiment"].capitalize()} (Tone: {event["tone"]:.2f})</p>
-            <p><b>Mentions:</b> {event["mention_count"]}</p>
-        </div>
-        """
-        
-        # Create marker with appropriate color based on sentiment
-        if event["sentiment"] == "positive":
-            folium.Marker(
-                [lat, lon],
-                popup=folium.Popup(popup_content, max_width=350),
-                icon=folium.Icon(color="green", icon="plus")
-            ).add_to(positive_cluster)
-        elif event["sentiment"] == "negative":
-            folium.Marker(
-                [lat, lon],
-                popup=folium.Popup(popup_content, max_width=350),
-                icon=folium.Icon(color="red", icon="minus")
-            ).add_to(negative_cluster)
-        else:
-            folium.Marker(
-                [lat, lon],
-                popup=folium.Popup(popup_content, max_width=350),
-                icon=folium.Icon(color="blue", icon="info-sign")
-            ).add_to(neutral_cluster)
+        for loc in event["locations"]:
+            # Skip if location name is missing
+            if not loc.get("name"):
+                continue
+                
+            # Use coordinates if available, otherwise geocode
+            if loc.get("lat") and loc.get("lon"):
+                lat, lon = loc["lat"], loc["lon"]
+            else:
+                search_query = f"{loc.get('name', '')}, {loc.get('country', '')}"
+                lat, lon = cached_geocode(search_query)
+                
+            if lat and lon:
+                # Create popup content
+                popup_content = f"""
+                <div style="width: 250px;">
+                    <h4>{event['label']}</h4>
+                    <p><b>Date:</b> {event['date']}</p>
+                    <p><b>Location:</b> {loc.get('name', 'Unknown')}</p>
+                    <p><b>Country:</b> {loc.get('country', 'Unknown')}</p>
+                    <p><b>Actors:</b> {', '.join(event['actors'])}</p>
+                    <p><b>Sentiment:</b> {event['sentiment'].capitalize()}</p>
+                </div>
+                """
+                
+                # Add marker with cluster
+                folium.Marker(
+                    [lat, lon],
+                    popup=folium.Popup(popup_content, max_width=300),
+                    icon=folium.Icon(
+                        color='green' if event['sentiment'] == 'positive' 
+                              else 'red' if event['sentiment'] == 'negative' 
+                              else 'blue'
+                    )
+                ).add_to(marker_cluster)
+                break  # Only add one marker per event
     
-    # Add marker clusters to the map
-    positive_cluster.add_to(m)
-    neutral_cluster.add_to(m)
-    negative_cluster.add_to(m)
-    
-    # Add layer control
-    folium.LayerControl().add_to(m)
-    
-    # Return the HTML string
     return m._repr_html_()
