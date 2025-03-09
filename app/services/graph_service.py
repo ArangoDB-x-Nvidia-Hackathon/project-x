@@ -22,36 +22,30 @@ def load_graph_from_arango(processed_query: Dict[str, Any]) -> nx.DiGraph:
     """
     G = nx.DiGraph()
     
-    # Start with simpler AQL query to get base events
+    # Base query to fetch events
     aql = """
-    FOR event IN Event
-        LET event_date = DATE_TIMESTAMP(event.date)
+    WITH Event, Actor, Location, eventActor, hasLocation  // Declare all collections used in the query
+    FOR e IN Event
     """
     
     filters = []
     
     # Time period filter
     if processed_query["time_period"]["start_date"]:
-        try:
-            start_timestamp = int(datetime.strptime(processed_query["time_period"]["start_date"], "%Y-%m-%d").timestamp() * 1000)
-            filters.append(f"event_date >= {start_timestamp}")
-        except ValueError:
-            logger.warning(f"Invalid start date format: {processed_query['time_period']['start_date']}")
+        start_timestamp = int(datetime.strptime(processed_query["time_period"]["start_date"], "%Y-%m-%d").timestamp() * 1000)
+        filters.append(f"e.dateStamp >= {start_timestamp}")
     
     if processed_query["time_period"]["end_date"]:
-        try:
-            end_timestamp = int(datetime.strptime(processed_query["time_period"]["end_date"], "%Y-%m-%d").timestamp() * 1000)
-            filters.append(f"event_date <= {end_timestamp}")
-        except ValueError:
-            logger.warning(f"Invalid end date format: {processed_query['time_period']['end_date']}")
+        end_timestamp = int(datetime.strptime(processed_query["time_period"]["end_date"], "%Y-%m-%d").timestamp() * 1000)
+        filters.append(f"e.dateStamp <= {end_timestamp}")
     
-    # Topic filter with simplified approach
+    # Topic filter
     if processed_query["topic"]:
         topic_terms = processed_query["topic"].lower().split()
         topic_filters = []
         for term in topic_terms:
             if term not in ["the", "and", "or", "in", "on", "at", "of", "to", "from", "with", "by"]:
-                topic_filters.append(f"LOWER(event.description) LIKE '%{term}%'")
+                topic_filters.append(f'CONTAINS(LOWER(e.description), "{term}")')
         
         if topic_filters:
             filters.append(f"({' OR '.join(topic_filters)})")
@@ -62,16 +56,16 @@ def load_graph_from_arango(processed_query: Dict[str, Any]) -> nx.DiGraph:
     
     # Complete the query with sorting and limiting
     aql += """
-    SORT event.date DESC
+    SORT e.dateStamp DESC
     LIMIT 1000
     RETURN {
-        _id: event._id,
-        _key: event._key,
-        date: event.date,
-        action: event.action,
-        description: event.description,
-        tone: event.tone,
-        mention_count: event.mention_count
+        _id: e._id,
+        _key: e._key,
+        date: e.date,
+        description: e.description,
+        label: e.label,
+        geo: e.geo,
+        fatalities: e.fatalities
     }
     """
     
@@ -84,38 +78,33 @@ def load_graph_from_arango(processed_query: Dict[str, Any]) -> nx.DiGraph:
         
         # Add events to NetworkX graph
         for event in events:
-            G.add_node(event["_id"], 
-                      type="Event", 
-                      key=event["_key"],
-                      date=event["date"],
-                      action=event["action"],
-                      description=event.get("description", ""),
-                      tone=event["tone"],
-                      mention_count=event["mention_count"],
-                      sentiment=categorize_sentiment(event["tone"]))
+            G.add_node(
+                event["_id"],
+                type="Event",
+                key=event["_key"],
+                date=event.get("date", ""),
+                description=event.get("description", ""),
+                label=event.get("label", ""),
+                geo=event.get("geo", {}),
+                fatalities=event.get("fatalities", 0),
+                sentiment=categorize_sentiment(event.get("tone", 0.0))  # Assuming tone is added later
+            )
         
         # No events found, return empty graph
         if not events:
             return G
             
-        # Format list of event IDs for subsequent queries
+        # Fetch actor and location relationships
         event_ids = [e["_id"] for e in events]
         
-        # Get actor relationships in a batch
-        actor_filter = ""
-        if processed_query["actors"]:
-            actor_conditions = []
-            for actor in processed_query["actors"]:
-                actor_conditions.append(f"LOWER(a.name) LIKE '%{actor.lower()}%'")
-            actor_filter = f"FILTER {' OR '.join(actor_conditions)}"
-            
+        # Actor relationships
         actor_aql = f"""
-        FOR event IN Event
-            FILTER event._id IN {event_ids}
-            FOR a, edge IN 1..1 OUTBOUND event eventActor
-                {actor_filter}
+        WITH Event, Actor, eventActor  // Declare collections for actor traversal
+        FOR e IN Event
+            FILTER e._id IN {event_ids}
+            FOR a, edge IN 1..1 OUTBOUND e eventActor
                 RETURN {{
-                    event_id: event._id,
+                    event_id: e._id,
                     actor_id: a._id,
                     actor_name: a.name
                 }}
@@ -123,30 +112,19 @@ def load_graph_from_arango(processed_query: Dict[str, Any]) -> nx.DiGraph:
         
         logger.info("Fetching actor relationships...")
         actor_cursor = db.aql.execute(actor_aql)
-        actor_edges = list(actor_cursor)
-        logger.info(f"Retrieved {len(actor_edges)} actor relationships")
-        
-        # Add actors and relationships to graph
-        for edge in actor_edges:
+        for edge in actor_cursor:
             if edge["actor_id"] not in G:
                 G.add_node(edge["actor_id"], type="Actor", name=edge["actor_name"])
             G.add_edge(edge["event_id"], edge["actor_id"], type="eventActor")
         
-        # Get location relationships
-        loc_filter = ""
-        if processed_query["locations"]:
-            loc_conditions = []
-            for location in processed_query["locations"]:
-                loc_conditions.append(f"LOWER(l.name) LIKE '%{location.lower()}%'")
-            loc_filter = f"FILTER {' OR '.join(loc_conditions)}"
-            
+        # Location relationships
         loc_aql = f"""
-        FOR event IN Event
-            FILTER event._id IN {event_ids}
-            FOR l, edge IN 1..1 OUTBOUND event hasLocation
-                {loc_filter}
+        WITH Event, Location, hasLocation  // Declare collections for location traversal
+        FOR e IN Event
+            FILTER e._id IN {event_ids}
+            FOR l, edge IN 1..1 OUTBOUND e hasLocation
                 RETURN {{
-                    event_id: event._id,
+                    event_id: e._id,
                     location_id: l._id,
                     location_name: l.name,
                     lat: l.lat,
@@ -157,18 +135,16 @@ def load_graph_from_arango(processed_query: Dict[str, Any]) -> nx.DiGraph:
         
         logger.info("Fetching location relationships...")
         loc_cursor = db.aql.execute(loc_aql)
-        loc_edges = list(loc_cursor)
-        logger.info(f"Retrieved {len(loc_edges)} location relationships")
-        
-        # Add locations and relationships to graph
-        for edge in loc_edges:
+        for edge in loc_cursor:
             if edge["location_id"] not in G:
-                G.add_node(edge["location_id"], 
-                          type="Location", 
-                          name=edge["location_name"],
-                          lat=edge["lat"],
-                          lon=edge["lon"],
-                          country=edge["country"])
+                G.add_node(
+                    edge["location_id"],
+                    type="Location",
+                    name=edge["location_name"],
+                    lat=edge.get("lat", 0.0),
+                    lon=edge.get("lon", 0.0),
+                    country=edge.get("country", "")
+                )
             G.add_edge(edge["event_id"], edge["location_id"], type="hasLocation")
             
         return G
@@ -215,12 +191,13 @@ def extract_events_from_graph(G: nx.DiGraph) -> List[Dict]:
             event = {
                 "event_id": node_data.get("key", ""),
                 "date": node_data.get("date", ""),
+                "description": node_data.get("description", ""),
+                "label": node_data.get("label", ""),
+                "geo": node_data.get("geo", {}),
+                "fatalities": node_data.get("fatalities", 0),
                 "actors": actors,
-                "action": node_data.get("action", ""),
-                "tone": node_data.get("tone", 0.0),
-                "sentiment": node_data.get("sentiment", "neutral"),
-                "mention_count": node_data.get("mention_count", 0),
-                "location": location
+                "location": location,
+                "sentiment": node_data.get("sentiment", "neutral")
             }
             
             events.append(event)

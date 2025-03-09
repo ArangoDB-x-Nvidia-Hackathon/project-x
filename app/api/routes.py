@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 
 from models.schemas import QueryRequest, QueryResponse, EventData, EventLocation
 from services.query_processor import process_query
-from services.database import query_graph_database
+from services.graph_service import query_graph_database_nx
 from services.sentiment import calculate_stats
 from services.visualization import create_map
 from config import EVENT_CODES
@@ -29,7 +29,7 @@ async def query_events(query_request: QueryRequest):
     processed_query = process_query(query_request.query)
     
     # Query the graph database
-    events_data = query_graph_database(processed_query)
+    events_data = query_graph_database_nx(processed_query)
     
     # Calculate statistics
     stats = calculate_stats(events_data)
@@ -79,7 +79,7 @@ async def visualize_events(query_request: QueryRequest):
     processed_query = process_query(query_request.query)
     
     # Query the graph database
-    events_data = query_graph_database(processed_query)
+    events_data = query_graph_database_nx(processed_query)
     
     # Create the map
     map_html = create_map(events_data)

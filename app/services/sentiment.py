@@ -1,5 +1,6 @@
 from typing import List, Dict
 
+
 def categorize_sentiment(tone: float) -> str:
     """
     Categorize the GDELT AvgTone value into positive, neutral, or negative.
@@ -28,18 +29,34 @@ def calculate_stats(events: List[Dict]) -> Dict:
             "total_events": 0,
             "sentiment_counts": {"positive": 0, "neutral": 0, "negative": 0},
             "avg_tone": 0,
-            "most_mentioned_event": None
+            "most_frequent_label": None,
+            "total_fatalities": 0
         }
     
+    # Sentiment distribution
     sentiment_counts = {"positive": 0, "neutral": 0, "negative": 0}
     for event in events:
-        sentiment_counts[event["sentiment"]] += 1
+        sentiment = event.get("sentiment", "neutral")
+        if sentiment in sentiment_counts:
+            sentiment_counts[sentiment] += 1
     
-    most_mentioned = max(events, key=lambda x: x["mention_count"], default=None)
+    # Most frequent label
+    label_counts = {}
+    for event in events:
+        label = event.get("label", "Unknown")
+        label_counts[label] = label_counts.get(label, 0) + 1
+    most_frequent_label = max(label_counts, key=label_counts.get, default=None)
+    
+    # Total fatalities
+    total_fatalities = sum(event.get("fatalities", 0) for event in events)
+    
+    # Average tone
+    avg_tone = sum(event.get("tone", 0) for event in events) / len(events)
     
     return {
         "total_events": len(events),
         "sentiment_counts": sentiment_counts,
-        "avg_tone": sum(event["tone"] for event in events) / len(events),
-        "most_mentioned_event": most_mentioned["event_id"] if most_mentioned else None
+        "avg_tone": avg_tone,
+        "most_frequent_label": most_frequent_label,
+        "total_fatalities": total_fatalities
     }
