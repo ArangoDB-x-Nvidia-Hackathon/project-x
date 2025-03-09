@@ -154,10 +154,7 @@ def load_graph_from_arango(processed_query: Dict[str, Any]) -> nx.DiGraph:
         return G
 
 def extract_events_from_graph(G: nx.DiGraph) -> List[Dict]:
-    """
-    Extract event data from NetworkX graph in the required format
-    for visualization.
-    """
+    """Extract event data from NetworkX graph in the required format."""
     events = []
     
     for node_id, node_data in G.nodes(data=True):
@@ -168,24 +165,17 @@ def extract_events_from_graph(G: nx.DiGraph) -> List[Dict]:
                 if G.nodes[actor_id].get("type") == "Actor":
                     actors.append(G.nodes[actor_id].get("name", ""))
             
-            # Find connected location
-            location = {
-                "lat": 0.0,
-                "lon": 0.0,
-                "country": "",
-                "location_name": ""
-            }
-            
+            # Find connected locations (multiple possible)
+            locations = []
             for _, loc_id in G.out_edges(node_id):
                 if G.nodes[loc_id].get("type") == "Location":
                     loc_data = G.nodes[loc_id]
-                    location = {
-                        "lat": loc_data.get("lat", 0.0),
-                        "lon": loc_data.get("lon", 0.0),
-                        "country": loc_data.get("country", ""),
-                        "location_name": loc_data.get("name", "")
-                    }
-                    break
+                    locations.append({
+                        "name": loc_data.get("name"),  # Can be None
+                        "country": loc_data.get("country"),  # Can be None
+                        "lat": loc_data.get("lat"),  # Can be None
+                        "lon": loc_data.get("lon")  # Can be None
+                    })
             
             # Create event data object
             event = {
@@ -196,7 +186,7 @@ def extract_events_from_graph(G: nx.DiGraph) -> List[Dict]:
                 "geo": node_data.get("geo", {}),
                 "fatalities": node_data.get("fatalities", 0),
                 "actors": actors,
-                "location": location,
+                "locations": locations,  # Now a list of location dicts
                 "sentiment": node_data.get("sentiment", "neutral")
             }
             
