@@ -1,18 +1,17 @@
+import os
 import re
 import json
-import requests
+from groq import Groq
 from config import GROQ_API_KEY
+
+client = Groq(api_key=GROQ_API_KEY)
+print(GROQ_API_KEY)
 
 def process_query(user_query: str) -> dict:
     """
     Process the user query into structured parameters for graph traversal
-    using direct API calls to Groq instead of LangChain.
+    using Groq API.
     """
-    headers = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
     template = """
     The user has provided the following query about world events: "{query}"
     
@@ -36,65 +35,28 @@ def process_query(user_query: str) -> dict:
     }}
     """
     
-    # Format the template with the user query
     formatted_prompt = template.format(query=user_query)
     
-    # Prepare the data for the API request
-    data = {
-        "model": "llama3-70b-8192",
-        "messages": [{"role": "user", "content": formatted_prompt}],
-        "temperature": 0
-    }
-    
     try:
-        # Make the API request
-        response = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers=headers,
-            json=data,
-            timeout=30  # Add timeout to prevent hanging
+        response = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[{"role": "user", "content": formatted_prompt}],
+            temperature=0
         )
         
-        # Check if the request was successful
-        response.raise_for_status()
+        result_text = response.choices[0].message.content
         
-        # Parse the response
-        result_json = response.json()
-        result_text = result_json.get("choices", [{}])[0].get("message", {}).get("content", "")
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+        if json_match:
+            return json.loads(json_match.group(0))
         
-        # Extract the JSON part of the response
-        try:
-            # Use regex to extract JSON object
-            json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-                return json.loads(json_str)
-            else:
-                # Fallback with minimal structure
-                return {
-                    "topic": user_query,
-                    "time_period": {"start_date": None, "end_date": None},
-                    "locations": [],
-                    "actors": [],
-                    "sentiment": "all"
-                }
-        except json.JSONDecodeError:
-            # If JSON parsing fails, return a minimal structure
-            return {
-                "topic": user_query,
-                "time_period": {"start_date": None, "end_date": None},
-                "locations": [],
-                "actors": [],
-                "sentiment": "all"
-            }
-            
-    except requests.exceptions.RequestException as e:
-        print(f"API request error: {e}")
-        # Return fallback response in case of API error
-        return {
-            "topic": user_query,
-            "time_period": {"start_date": None, "end_date": None},
-            "locations": [],
-            "actors": [],
-            "sentiment": "all"
-        } 
+    except Exception as e:
+        print(f"Groq API request error: {e}")
+    
+    return {
+        "topic": user_query,
+        "time_period": {"start_date": None, "end_date": None},
+        "locations": [],
+        "actors": [],
+        "sentiment": "all"
+    }
