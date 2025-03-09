@@ -37,3 +37,6 @@ EVENT_CODES = {
     "19": "FIGHT",
     "20": "ENGAGE IN UNCONVENTIONAL MASS VIOLENCE"
 }
+
+# Graph database query settings
+USE_NETWORKX = True  # Set to False to use original implementation

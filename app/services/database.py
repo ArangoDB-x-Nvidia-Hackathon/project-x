@@ -1,9 +1,17 @@
 from arango import ArangoClient
 from datetime import datetime
 from typing import List, Dict, Any
+import logging
 
 from config import ARANGO_HOST, ARANGO_USER, ARANGO_PASSWORD, ARANGO_DB
 from services.sentiment import categorize_sentiment, filter_by_sentiment
+
+# Import the NetworkX implementation
+from services.graph_service import query_graph_database_nx
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("database")
 
 # Initialize ArangoDB client
 client = ArangoClient(hosts=ARANGO_HOST)
@@ -103,9 +111,9 @@ def build_aql_query(processed_query: Dict[str, Any]) -> str:
     
     return aql
 
-def query_graph_database(processed_query: Dict[str, Any]) -> List[Dict]:
+def query_graph_database_original(processed_query: Dict[str, Any]) -> List[Dict]:
     """
-    Query the ArangoDB graph database using the processed query parameters.
+    Original implementation for querying the ArangoDB graph database.
     """
     try:
         # Build the AQL query
@@ -125,9 +133,28 @@ def query_graph_database(processed_query: Dict[str, Any]) -> List[Dict]:
         if processed_query["sentiment"] and processed_query["sentiment"].lower() != "all":
             events = filter_by_sentiment(events, processed_query["sentiment"])
         
-        print(f"Query returned {len(events)} events")
+        logger.info(f"Query returned {len(events)} events")
         return events
     
     except Exception as e:
-        print(f"Error querying graph database: {str(e)}")
+        logger.error(f"Error querying graph database: {str(e)}")
         return []
+
+def query_graph_database(processed_query: Dict[str, Any], use_networkx: bool = True) -> List[Dict]:
+    """
+    Query the ArangoDB graph database using the processed query parameters.
+    Can use either NetworkX implementation or original implementation.
+    
+    Args:
+        processed_query: The processed query parameters
+        use_networkx: Whether to use NetworkX implementation (default: True)
+        
+    Returns:
+        List of event dictionaries
+    """
+    if use_networkx:
+        logger.info("Using NetworkX implementation for graph query")
+        return query_graph_database_nx(processed_query)
+    else:
+        logger.info("Using original implementation for graph query")
+        return query_graph_database_original(processed_query)
