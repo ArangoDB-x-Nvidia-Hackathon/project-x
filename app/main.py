@@ -1,16 +1,20 @@
 from fastapi import FastAPI
-# from app.routes import query
-import uvicorn
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
+from api.routes import router
 
-app = FastAPI()
+# Initialize FastAPI app
+app = FastAPI(title="GDELT Event Analysis", 
+              description="API for analyzing sentiment and events from GDELT database")
 
-# app.include_router(query.router, prefix="/query", tags=["Query"])
+# Set up templates directory for serving HTML
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/")
-def read_root():
-    return {"message": "FastAPI is running!"}
+# Include API routes
+app.include_router(router)
 
 if __name__ == "__main__":
-    
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
