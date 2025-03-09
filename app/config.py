@@ -40,3 +40,8 @@ EVENT_CODES = {
 
 # Graph database query settings
 USE_NETWORKX = True  # Set to False to use original implementation
+
+# Geocoding Configuration
+GEOCODING_TIMEOUT = 10  # Seconds
+GEOCODING_MAX_RETRIES = 2
+GEOCODING_CACHE_SIZE = 1000  # Number of locations to cache
