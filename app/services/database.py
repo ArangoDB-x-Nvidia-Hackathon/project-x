@@ -2,7 +2,7 @@ from arango import ArangoClient
 from datetime import datetime
 from typing import List, Dict, Any
 
-from config import ARANGO_HOST, ARANGO_DB, ARANGO_USER, ARANGO_PASSWORD
+from config import ARANGO_HOST, ARANGO_USER, ARANGO_PASSWORD
 from services.sentiment import categorize_sentiment, filter_by_sentiment
 
 # Initialize ArangoDB client

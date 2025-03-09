@@ -1,17 +1,21 @@
 import re
 import json
 from langchain.prompts import PromptTemplate
-from langchain.llms import OpenAI
+from langchain_groq import ChatGroq
 
 from config import GROQ_API_KEY
 
-# Initialize OpenAI for query processing
-llm = OpenAI(temperature=0, api_key=GROQ_API_KEY)
+# Initialize Groq for query processing
+llm = ChatGroq(
+    temperature=0,
+    api_key=GROQ_API_KEY,
+    model_name="llama3-70b-8192"  # or another Groq model of your choice
+)
 
 def process_query(user_query: str) -> dict:
     """
     Use LangChain to process the user query into structured parameters
-    for graph traversal.
+    for graph traversal using Groq's API.
     """
     template = """
     The user has provided the following query about world events: "{query}"
@@ -41,13 +45,16 @@ def process_query(user_query: str) -> dict:
         template=template,
     )
     
-    # Generate the structured query
-    result = llm(prompt.format(query=user_query))
+    # Generate the structured query using Groq
+    result = llm.invoke(prompt.format(query=user_query))
+    
+    # Extract the response content
+    result_text = result.content
     
     # Extract the JSON part of the response
     try:
         # Use regex to extract JSON object
-        json_match = re.search(r'\{.*\}', result, re.DOTALL)
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
         if json_match:
             json_str = json_match.group(0)
             return json.loads(json_str)

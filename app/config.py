@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ArangoDB Configuration
 ARANGO_HOST = os.getenv("HOST")
