@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Events Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 p-4 sidebar">
+                <h1 class="mb-4">Global Events Analysis</h1>
+                
+                <div class="input-group mb-4">
+                    <input type="text" id="query-input" class="form-control" 
+                           placeholder="e.g., What events happened in 2001?">
+                    <button class="btn btn-primary" type="button" id="query-button">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+                
+                <div id="loading" class="d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="ms-2">Processing your query...</span>
+                </div>
+                
+                <div id="sentiment-analysis" class="card mb-4 d-none">
+                    <div class="card-header">
+                        <h5>Sentiment Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Overall sentiment:</strong> <span id="overall-sentiment"></span></p>
+                        <div class="sentiment-bars">
+                            <div class="sentiment-bar">
+                                <label>Positive:</label>
+                                <div class="progress">
+                                    <div id="positive-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <span id="positive-count">0</span>
+                            </div>
+                            <div class="sentiment-bar">
+                                <label>Negative:</label>
+                                <div class="progress">
+                                    <div id="negative-bar" class="progress-bar bg-danger" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <span id="negative-count">0</span>
+                            </div>
+                            <div class="sentiment-bar">
+                                <label>Mixed:</label>
+                                <div class="progress">
+                                    <div id="mixed-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <span id="mixed-count">0</span>
+                            </div>
+                            <div class="sentiment-bar">
+                                <label>Neutral:</label>
+                                <div class="progress">
+                                    <div id="neutral-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <span id="neutral-count">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="event-list" class="d-none">
+                    <h4>Events <span id="event-count" class="badge bg-secondary">0</span></h4>
+                    <div class="list-group" id="events-container">
+                        <!-- Events will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main content -->
+            <div class="col-md-9 p-0 main-content">
+                <div id="map-container" class="h-100">
+                    <div id="initial-message" class="text-center p-5">
+                        <i class="fas fa-globe fa-4x text-muted mb-3"></i>
+                        <h3>Enter a query to analyze global events</h3>
+                        <p class="text-muted">Try queries like "What events happened in 2001?" or "Show me terrorist attacks in the Middle East"</p>
+                    </div>
+                    <div id="map" class="h-100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Event Details Modal -->
+    <div class="modal fade" id="event-details-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="event-title">Event Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="event-details-content">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
