@@ -90,7 +90,7 @@ def generate_map(events):
     # Default to world view if no events
     if not events:
         m = folium.Map(location=[20, 0], zoom_start=2)
-        return m._repr_html_()
+        return m._repr_html_()  # Use the built-in HTML representation instead
 
     # Calculate center of the map based on events
     latitudes = [float(event["latitude"]) for event in events if event.get("latitude")]
@@ -111,7 +111,7 @@ def generate_map(events):
         if event.get("latitude") and event.get("longitude"):
             sentiment = event.get("sentiment", "neutral")
             color = get_sentiment_color(sentiment)
-
+            
             popup_content = f"""
             <div style="width: 250px;">
                 <h4>{event['incident_name']}</h4>
@@ -130,23 +130,11 @@ def generate_map(events):
                 location=[float(event["latitude"]), float(event["longitude"])],
                 popup=folium.Popup(popup_content, max_width=300),
                 tooltip=event["incident_name"],
-                icon=folium.Icon(color=color, icon=get_icon_for_event_type(event["event_type"]), prefix='fa')
+                icon=folium.Icon(color=color)
             ).add_to(marker_cluster)
 
-    # Create a temporary file and save the map
-    fd, path = tempfile.mkstemp(suffix=".html")
-    
-    try:
-        m.save(path)  # Save map to file
-
-        with open(path, 'r', encoding='utf-8') as f:
-            map_html = f.read()  # Read the saved HTML file
-        
-    finally:
-        os.close(fd)  # Close file descriptor
-        os.remove(path)  # Ensure the temp file is deleted
-    
-    return map_html
+    # Use the built-in HTML representation
+    return m._repr_html_()
 
 if __name__ == "__main__":
     import uvicorn
