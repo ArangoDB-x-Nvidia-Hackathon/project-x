@@ -1,0 +1,149 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.container-fluid {
+    height: 100vh;
+    padding: 0;
+}
+
+.row {
+    height: 100%;
+    margin: 0;
+}
+
+.sidebar {
+    background-color: #f8f9fa;
+    height: 100vh;
+    overflow-y: auto;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.main-content {
+    height: 100vh;
+    padding: 0;
+}
+
+#map-container {
+    height: 100%;
+    position: relative;
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+#initial-message {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #f8f9fa;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.sentiment-bars {
+    margin-top: 15px;
+}
+
+.sentiment-bar {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.sentiment-bar label {
+    width: 80px;
+    margin-right: 10px;
+    text-align: right;
+}
+
+.sentiment-bar .progress {
+    flex-grow: 1;
+    margin-right: 10px;
+}
+
+.card {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.list-group {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.list-group-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.list-group-item:hover {
+    background-color: #f0f0f0;
+}
+
+.list-group-item-positive {
+    border-left: 4px solid #28a745;
+}
+
+.list-group-item-negative {
+    border-left: 4px solid #dc3545;
+}
+
+.list-group-item-mixed {
+    border-left: 4px solid #ffc107;
+}
+
+.list-group-item-neutral {
+    border-left: 4px solid #17a2b8;
+}
+
+/* Modal styles */
+.event-detail-card {
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.event-summary {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+.event-metadata {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.event-metadata-item {
+    background-color: #f8f9fa;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9em;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        height: auto;
+        max-height: 50vh;
+    }
+    
+    .main-content {
+        height: 50vh;
+    }
+}
