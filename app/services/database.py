@@ -22,7 +22,7 @@ def query_events_by_year(year):
     db = get_db_connection()
     
     aql_query = """
-    WITH events, countries  // Add this line
+    WITH events, countries
     FOR event IN events
         FILTER event.year == @year
         LET country = (

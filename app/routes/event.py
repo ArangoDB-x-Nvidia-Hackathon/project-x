@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 # Import our custom modules
-from app.database import get_event_details
-from app.groq_api import generate_event_summary
+from app.services.database import get_event_details
+from app.services.groq_api import generate_event_summary
 
 router = APIRouter()
 

@@ -4,9 +4,9 @@ import folium
 from folium.plugins import MarkerCluster
 
 # Import our custom modules
-from app.database import query_events_by_year, search_events
-from app.groq_api import extract_query_parameters
-from app.sentiment import analyze_event_sentiment, get_sentiment_color
+from app.services.database import query_events_by_year, search_events
+from app.services.groq_api import extract_query_parameters
+from app.services.sentiment import analyze_event_sentiment, get_sentiment_color
 
 router = APIRouter()
 
