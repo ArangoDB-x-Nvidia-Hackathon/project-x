@@ -17,7 +17,7 @@
                 
                 <div class="input-group mb-4">
                     <input type="text" id="query-input" class="form-control" 
-                           placeholder="e.g., What events happened in 2001?">
+                           placeholder="e.g., Show me the global events in 2001?">
                     <button class="btn btn-primary" type="button" id="query-button">
                         <i class="fas fa-search"></i> Search
                     </button>
@@ -58,13 +58,6 @@
                                 </div>
                                 <span id="mixed-count">0</span>
                             </div>
-                            <div class="sentiment-bar">
-                                <label>Neutral:</label>
-                                <div class="progress">
-                                    <div id="neutral-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
-                                </div>
-                                <span id="neutral-count">0</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -83,7 +76,7 @@
                     <div id="initial-message" class="text-center p-5">
                         <i class="fas fa-globe fa-4x text-muted mb-3"></i>
                         <h3>Enter a query to analyze global events</h3>
-                        <p class="text-muted">Try queries like "What events happened in 2001?" or "Show me terrorist attacks in the Middle East"</p>
+                        <p class="text-muted">Try queries like "What events happened in 2001?"</p>
                     </div>
                     <div id="map" class="h-100"></div>
                 </div>
@@ -92,7 +85,7 @@
     </div>
     
     <!-- Event Details Modal -->
-    <div class="modal fade" id="event-details-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="event-details-modal" tabindex="-1" aria-labelledby="event-title" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
